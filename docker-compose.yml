@@ -1,0 +1,11 @@
+services:
+  face-recognition-app:
+    build: .
+    ports:
+      - "5000:5000"
+    networks:
+      - web
+    container_name: face_recognition_app
+networks:
+  web:
+    external: true
