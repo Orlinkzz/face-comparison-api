@@ -1,0 +1,746 @@
+﻿<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face Comparison API — Verifikasi Wajah Open Source (Flask + face_recognition)</title>
+<meta name="description" content="REST API open source untuk membandingkan foto profil dengan selfie (face verification). Python, Flask, face_recognition/dlib, siap Docker. Coba langsung di browser.">
+<meta name="keywords" content="face comparison api, face verification, face recognition api, verifikasi wajah, perbandingan wajah, absensi selfie, e-KYC, flask, python, dlib, docker">
+<meta name="author" content="orlinkzz">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://orlinkzz.github.io/face-comparison-api/">
+<meta name="theme-color" content="#2457d6">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232457d6'/%3E%3Ccircle cx='32' cy='27' r='11' fill='none' stroke='white' stroke-width='4'/%3E%3Cpath d='M14 52c4-9 11-13 18-13s14 4 18 13' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<!-- Open Graph (Facebook, LinkedIn, WhatsApp, Telegram) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Face Comparison API">
+<meta property="og:locale" content="id_ID">
+<meta property="og:title" content="Face Comparison API — Verifikasi Wajah Open Source">
+<meta property="og:description" content="Bandingkan foto profil dengan selfie lewat REST API self-hosted. Python, Flask, face_recognition, siap Docker. MIT License.">
+<meta property="og:url" content="https://orlinkzz.github.io/face-comparison-api/">
+<meta property="og:image" content="https://orlinkzz.github.io/face-comparison-api/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Face Comparison API — verifikasi wajah foto profil vs selfie">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Face Comparison API — Verifikasi Wajah Open Source">
+<meta name="twitter:description" content="Bandingkan foto profil dengan selfie lewat REST API self-hosted. Python, Flask, face_recognition, siap Docker.">
+<meta name="twitter:image" content="https://orlinkzz.github.io/face-comparison-api/og-image.png">
+
+<!-- Structured data (Google rich results) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "Face Comparison API",
+  "description": "REST API open source untuk membandingkan foto profil dengan selfie (face verification) menggunakan Python, Flask, dan face_recognition.",
+  "url": "https://orlinkzz.github.io/face-comparison-api/",
+  "codeRepository": "https://github.com/orlinkzz/face-comparison-api",
+  "programmingLanguage": ["Python", "JavaScript"],
+  "runtimePlatform": "Docker",
+  "license": "https://opensource.org/licenses/MIT",
+  "inLanguage": "id",
+  "keywords": "face comparison, face verification, face recognition, verifikasi wajah, flask, dlib",
+  "author": { "@type": "Person", "name": "orlinkzz", "url": "https://github.com/orlinkzz" }
+}
+</script>
+
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --bg-soft: #eef2fa;
+    --card: #ffffff;
+    --text: #141a23;
+    --muted: #5d6878;
+    --border: #e1e6ee;
+    --accent: #2457d6;
+    --accent-2: #4f7cf0;
+    --accent-soft: #e6edfd;
+    --ok: #1a7f37;
+    --ok-soft: #e3f4e8;
+    --warn: #a35f00;
+    --warn-soft: #fdf1dc;
+    --err: #c62828;
+    --err-soft: #fde7e7;
+    --code-bg: #0f1520;
+    --code-text: #d7e0ee;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+    --radius: 14px;
+    --header-bg: rgba(247, 248, 251, .82);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0f14;
+      --bg-soft: #121826;
+      --card: #141a22;
+      --text: #e7ebf1;
+      --muted: #97a2b1;
+      --border: #242c38;
+      --accent: #6f9bff;
+      --accent-2: #8fb1ff;
+      --accent-soft: #1a2540;
+      --ok: #4cc06a;
+      --ok-soft: #12291a;
+      --warn: #e6a945;
+      --warn-soft: #2d2210;
+      --err: #ff6b6b;
+      --err-soft: #331617;
+      --code-bg: #0a0d12;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+      --header-bg: rgba(12, 15, 20, .8);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .88em;
+    background: var(--bg-soft); padding: 1px 6px; border-radius: 5px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- Header ---------- */
+  .site-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--header-bg);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .site-header .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; font-size: 1.02rem; }
+  .brand:hover { text-decoration: none; }
+  .brand svg { flex: none; }
+  .nav { display: flex; gap: 22px; margin-left: auto; }
+  .nav a { color: var(--muted); font-weight: 500; font-size: .94rem; }
+  .nav a:hover { color: var(--text); text-decoration: none; }
+  .btn-github {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 10px;
+    background: var(--text); color: var(--bg);
+    font-weight: 600; font-size: .9rem; white-space: nowrap;
+    transition: transform .15s ease, opacity .15s ease;
+  }
+  .btn-github:hover { text-decoration: none; opacity: .9; transform: translateY(-1px); }
+  .btn-github svg { width: 18px; height: 18px; fill: currentColor; }
+  @media (max-width: 720px) {
+    .nav { display: none; }
+    .btn-github { margin-left: auto; }
+    .btn-github .label-long { display: none; }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 72px 0 56px;
+    background:
+      radial-gradient(600px 300px at 15% 0%, var(--accent-soft), transparent 70%),
+      radial-gradient(500px 260px at 90% 10%, var(--bg-soft), transparent 70%);
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--muted); font-size: .82rem; font-weight: 600;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .hero h1 {
+    font-size: clamp(2rem, 4.6vw, 3.1rem);
+    line-height: 1.12; letter-spacing: -.02em;
+    margin: 18px 0 14px; max-width: 18ch;
+  }
+  .hero h1 span {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead { color: var(--muted); font-size: 1.08rem; max-width: 60ch; margin: 0 0 28px; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .chip { padding: 4px 11px; border-radius: 999px; font-size: .8rem; font-weight: 600;
+    background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: inherit; font-weight: 600; font-size: .95rem;
+    padding: 11px 20px; border-radius: 10px; cursor: pointer;
+    border: 1px solid transparent; transition: transform .15s ease, background .15s ease, opacity .15s ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 6px 16px rgba(36, 87, 214, .25); }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-ghost { background: var(--card); color: var(--text); border-color: var(--border); }
+  .btn-ghost:hover { border-color: var(--muted); }
+  .btn:disabled { opacity: .6; cursor: progress; transform: none; }
+  .btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+  /* ---------- Sections ---------- */
+  section.block { padding: 56px 0; }
+  section.block + section.block { padding-top: 8px; }
+  .section-head { margin-bottom: 22px; }
+  .section-head h2 { font-size: 1.5rem; letter-spacing: -.01em; margin: 0 0 6px; }
+  .section-head p { color: var(--muted); margin: 0; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- Tester ---------- */
+  .tester { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 880px) { .tester { grid-template-columns: 1fr; } }
+  .panel { padding: 22px; }
+  .field-label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 8px; }
+  .input {
+    width: 100%; padding: 11px 13px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg); color: var(--text);
+    font: 500 .92rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  .input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .hint { color: var(--muted); font-size: .84rem; margin-top: 8px; }
+
+  .drops { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+  @media (max-width: 520px) { .drops { grid-template-columns: 1fr; } }
+  .drop {
+    position: relative; display: block; cursor: pointer;
+    border: 1.5px dashed var(--border); border-radius: 12px;
+    background: var(--bg); overflow: hidden;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .drop:hover, .drop.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop .thumb {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+    color: var(--muted); font-size: .85rem; text-align: center; padding: 16px;
+  }
+  .drop .thumb img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .drop .thumb svg { width: 36px; height: 36px; stroke: currentColor; fill: none; margin-bottom: 8px; }
+  .drop .meta {
+    position: relative; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 10px 12px; background: var(--card); border-top: 1px solid var(--border); font-size: .82rem;
+  }
+  .drop .meta strong { font-size: .86rem; }
+  .drop .meta span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .actions .btn-primary { flex: 1 1 200px; }
+
+  /* Result */
+  .result-empty { text-align: center; color: var(--muted); padding: 40px 12px; }
+  .result-empty svg { width: 44px; height: 44px; stroke: currentColor; fill: none; opacity: .6; }
+  .verdict {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px; border-radius: 12px; margin-bottom: 18px;
+  }
+  .verdict .icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 1.2rem; flex: none; }
+  .verdict h3 { margin: 0; font-size: 1.1rem; }
+  .verdict p { margin: 2px 0 0; font-size: .86rem; color: var(--muted); }
+  .verdict.success { background: var(--ok-soft); } .verdict.success .icon { background: var(--ok); }
+  .verdict.pending { background: var(--warn-soft); } .verdict.pending .icon { background: var(--warn); }
+  .verdict.error { background: var(--err-soft); } .verdict.error .icon { background: var(--err); }
+  .meter { position: relative; height: 10px; border-radius: 6px; margin: 8px 0 6px;
+    background: linear-gradient(to right, var(--ok) 0 45%, var(--warn) 45% 60%, var(--err) 60% 100%); }
+  .meter .pin { position: absolute; top: -6px; width: 6px; height: 22px; border-radius: 3px;
+    background: var(--text); border: 2px solid var(--card); transform: translateX(-3px);
+    transition: left .5s cubic-bezier(.2, .8, .2, 1); }
+  .scale { display: flex; justify-content: space-between; font-size: .74rem; color: var(--muted);
+    font-family: ui-monospace, Consolas, monospace; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat small { display: block; color: var(--muted); font-size: .76rem; }
+  .stat b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  details.raw summary { cursor: pointer; color: var(--muted); font-size: .85rem; font-weight: 600; }
+
+  pre {
+    margin: 10px 0 0; padding: 14px 16px; border-radius: 10px;
+    background: var(--code-bg); color: var(--code-text);
+    font: .84rem/1.6 ui-monospace, "Cascadia Code", Consolas, monospace;
+    overflow-x: auto; white-space: pre;
+  }
+
+  /* ---------- How it works ---------- */
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .tiers { grid-template-columns: 1fr; } }
+  .tier { padding: 20px; border-top: 4px solid; }
+  .tier.success { border-top-color: var(--ok); }
+  .tier.pending { border-top-color: var(--warn); }
+  .tier.error { border-top-color: var(--err); }
+  .tier .range { font: 700 1.25rem ui-monospace, Consolas, monospace; margin: 0 0 4px; }
+  .tier .tag { display: inline-block; font-size: .75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: #fff; }
+  .tier.success .tag { background: var(--ok); }
+  .tier.pending .tag { background: var(--warn); }
+  .tier.error .tag { background: var(--err); }
+  .tier p { color: var(--muted); margin: 10px 0 0; font-size: .92rem; }
+
+  .codeblock { position: relative; margin-top: 16px; }
+  .codeblock .copy {
+    position: absolute; top: 10px; right: 10px;
+    font: 600 .76rem system-ui, sans-serif; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+    background: rgba(255, 255, 255, .08); color: var(--code-text); border: 1px solid rgba(255, 255, 255, .15);
+  }
+  .codeblock .copy:hover { background: rgba(255, 255, 255, .16); }
+  .tabs { display: flex; gap: 6px; margin-top: 18px; }
+  .tab { font: 600 .85rem system-ui, sans-serif; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ---------- About & FAQ ---------- */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .feature { padding: 20px; }
+  .feature .ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); margin-bottom: 12px; }
+  .feature .ico svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .feature h3 { margin: 0 0 6px; font-size: 1rem; }
+  .feature p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .about-text { margin-top: 20px; padding: 22px; }
+  .about-text p { margin: 0 0 10px; }
+  .about-text p:last-child { margin: 0; color: var(--muted); font-size: .9rem; }
+
+  .faq { padding: 6px 22px; }
+  .faq details { border-bottom: 1px solid var(--border); padding: 16px 0; }
+  .faq details:last-child { border-bottom: 0; }
+  .faq summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; color: var(--muted); font-size: 1.2rem; line-height: 1; transition: transform .2s ease; }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq details p { margin: 10px 0 0; color: var(--muted); }
+
+  /* ---------- CTA & footer ---------- */
+  .cta {
+    padding: 36px; text-align: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+    border: 0;
+  }
+  .cta h2 { margin: 0 0 8px; font-size: 1.5rem; }
+  .cta p { margin: 0 0 20px; opacity: .9; }
+  .cta .btn { background: #fff; color: #1b2a4a; }
+  .site-footer { border-top: 1px solid var(--border); padding: 28px 0 40px; margin-top: 56px;
+    color: var(--muted); font-size: .86rem; }
+  .site-footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  .site-footer nav { display: flex; flex-wrap: wrap; gap: 18px; }
+  .site-footer a { color: var(--muted); }
+  .site-footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#" aria-label="Face Comparison API — beranda">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#2457d6"/>
+        <circle cx="32" cy="27" r="11" fill="none" stroke="#fff" stroke-width="4"/>
+        <path d="M14 52c4-9 11-13 18-13s14 4 18 13" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      Face Comparison API
+    </a>
+    <nav class="nav" aria-label="Navigasi utama">
+      <a href="#demo">Demo</a>
+      <a href="#cara-kerja">Cara kerja</a>
+      <a href="#mulai">Mulai</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn-github" href="https://github.com/orlinkzz/face-comparison-api" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span class="label-long">Lihat di&nbsp;</span>GitHub
+    </a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow"><span class="dot"></span> Open source · MIT License · Self-hosted</span>
+      <h1>Verifikasi wajah <span>foto profil vs selfie</span> dalam satu request</h1>
+      <p class="lead">
+        Face Comparison API adalah REST API open source (Python, Flask, face_recognition) untuk membandingkan
+        dua foto wajah. Jalankan dengan Docker, kirim dua gambar, dan dapatkan hasil cocok, perlu verifikasi,
+        atau tidak cocok beserta nilai distance-nya.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#demo">Coba sekarang</a>
+        <a class="btn btn-ghost" href="https://github.com/orlinkzz/face-comparison-api" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Source code
+        </a>
+      </div>
+      <div class="chips">
+        <span class="chip">Python 3.11</span>
+        <span class="chip">Flask</span>
+        <span class="chip">face_recognition / dlib</span>
+        <span class="chip">Docker + Gunicorn</span>
+        <span class="chip">CORS</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="demo">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Coba langsung</h2>
+        <p>Jalankan API Anda terlebih dahulu, lalu bandingkan foto profil dengan selfie. Gambar tidak dikirim ke mana pun selain URL yang Anda isi.</p>
+      </div>
+
+      <div class="tester">
+        <div class="card panel">
+          <label class="field-label" for="apiUrl">URL endpoint</label>
+          <input class="input" type="url" id="apiUrl" value="http://localhost:5000/compare_faces" spellcheck="false">
+          <div class="hint">Tersimpan di browser Anda. Jika di belakang reverse proxy, sesuaikan path-nya, misalnya <code>https://domain-anda/face-recognition/compare_faces</code>.</div>
+
+          <div class="drops">
+            <label class="drop" id="drop1">
+              <input type="file" id="file1" accept="image/*" aria-label="Pilih foto profil">
+              <div class="thumb" id="thumb1">
+                <div><svg viewBox="0 0 24 24" stroke-width="1.6"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><br>Klik atau seret foto ke sini</div>
+              </div>
+              <div class="meta"><strong>Foto profil</strong><span id="name1">image1</span></div>
+            </label>
+            <label class="drop" id="drop2">
+              <input type="file" id="file2" accept="image/*" aria-label="Pilih selfie">
+              <div class="thumb" id="thumb2">
+                <div><svg viewBox="0 0 24 24" stroke-width="1.6"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-2h5L16 6"/></svg><br>Klik atau seret selfie ke sini</div>
+              </div>
+              <div class="meta"><strong>Selfie</strong><span id="name2">image2</span></div>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" id="compareBtn">Bandingkan wajah</button>
+            <button class="btn btn-ghost" id="sampleBtn">Pakai gambar contoh</button>
+          </div>
+          <div class="hint" id="sampleHint">Gambar contoh: <code>samples/profile.jpg</code> dan <code>samples/selfie.jpg</code>.</div>
+        </div>
+
+        <div class="card panel" aria-live="polite">
+          <div id="resultEmpty" class="result-empty">
+            <svg viewBox="0 0 24 24" stroke-width="1.5"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c1-3 3-4.5 5-4.5s4 1.5 5 4.5M11 19c1-3 3-4.5 5-4.5s4 1.5 5 4.5"/></svg>
+            <p>Hasil perbandingan akan muncul di sini.</p>
+          </div>
+          <div id="resultBody" hidden>
+            <div class="verdict" id="verdict">
+              <div class="icon" id="verdictIcon"></div>
+              <div><h3 id="verdictTitle"></h3><p id="verdictSub"></p></div>
+            </div>
+            <div id="meterWrap">
+              <div class="meter"><div class="pin" id="pin"></div></div>
+              <div class="scale"><span>0.0</span><span>0.45</span><span>0.6</span><span>1.0</span></div>
+            </div>
+            <div class="stats">
+              <div class="stat"><small>Distance</small><b id="distance">—</b></div>
+              <div class="stat"><small>Waktu respons</small><b id="elapsed">—</b></div>
+            </div>
+            <details class="raw">
+              <summary>Lihat response mentah</summary>
+              <pre id="raw"></pre>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="cara-kerja">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Cara membaca hasil</h2>
+        <p>Setiap wajah diubah menjadi vektor 128 dimensi. Makin kecil jarak (distance) antar vektor, makin mirip wajahnya.</p>
+      </div>
+      <div class="tiers">
+        <div class="card tier success">
+          <p class="range">&lt; 0.45</p><span class="tag">success</span>
+          <p>Wajah cocok. Aman diterima otomatis.</p>
+        </div>
+        <div class="card tier pending">
+          <p class="range">0.45 – 0.6</p><span class="tag">pending</span>
+          <p>Kemungkinan cocok, tapi sebaiknya diverifikasi manual.</p>
+        </div>
+        <div class="card tier error">
+          <p class="range">≥ 0.6</p><span class="tag">error</span>
+          <p>Wajah tidak cocok. Distance <code>null</code> berarti wajah tidak terdeteksi.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="mulai">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Mulai dalam 1 menit</h2>
+        <p>Clone repo, jalankan dengan Docker, lalu kirim request.</p>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-tab="docker">Docker</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="js">JavaScript</button>
+      </div>
+      <div class="codeblock">
+        <button class="copy" id="copyBtn">Salin</button>
+        <pre id="code-docker">git clone https://github.com/orlinkzz/face-comparison-api.git
+cd face-comparison-api
+docker network create web
+docker compose up -d --build</pre>
+        <pre id="code-curl" hidden>curl -X POST http://localhost:5000/compare_faces \
+  -F "image1=@samples/profile.jpg" \
+  -F "image2=@samples/selfie.jpg"</pre>
+        <pre id="code-js" hidden>const form = new FormData();
+form.append("image1", profileFile);
+form.append("image2", selfieFile);
+
+const res = await fetch("http://localhost:5000/compare_faces", { method: "POST", body: form });
+const { status, message, distance } = await res.json();</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="tentang">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Tentang Face Comparison API</h2>
+      </div>
+      <div class="features">
+        <div class="card feature">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+          <h3>Self-hosted & privat</h3>
+          <p>Gambar diproses di server Anda sendiri, tanpa layanan pihak ketiga.</p>
+        </div>
+        <div class="card feature">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
+          <h3>Cache encoding</h3>
+          <p>Foto profil yang sama tidak diproses ulang (LRU, 1000 entri).</p>
+        </div>
+        <div class="card feature">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 7V5h10v2"/></svg></div>
+          <h3>Siap Docker</h3>
+          <p>Gunicorn 4 worker, timeout 120 detik, satu perintah untuk jalan.</p>
+        </div>
+        <div class="card feature">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+          <h3>Server-Timing</h3>
+          <p>Durasi tiap tahap tercatat di header, siap untuk load test k6.</p>
+        </div>
+      </div>
+      <div class="card about-text">
+        <p>
+          <strong>Face Comparison API</strong> adalah REST API open source untuk <strong>verifikasi wajah</strong>
+          (face verification): membandingkan foto profil dengan selfie dan menentukan apakah keduanya orang yang sama.
+          Cocok untuk absensi selfie karyawan, verifikasi identitas (e-KYC) sederhana, validasi foto akun, atau sebagai
+          backend face matching untuk aplikasi web dan mobile (Laravel, Node.js, Flutter, dan lainnya).
+        </p>
+        <p lang="en">
+          <em>English:</em> an open-source, self-hosted face comparison / face verification REST API built with
+          Python, Flask and face_recognition (dlib). Compare a profile photo with a selfie and get a match,
+          pending or no-match result with the face distance. Docker-ready, MIT licensed.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Pertanyaan umum (FAQ)</h2>
+      </div>
+      <div class="card faq">
+        <details>
+          <summary>Bagaimana cara kerja perbandingan wajah?</summary>
+          <p>Setiap wajah diubah menjadi vektor 128 dimensi (face encoding). API menghitung jarak (distance)
+            antara kedua vektor: makin kecil jaraknya, makin mirip wajahnya. Di bawah 0.45 dianggap cocok,
+            0.45–0.6 perlu verifikasi manual, dan 0.6 ke atas dianggap tidak cocok.</p>
+        </details>
+        <details>
+          <summary>Apakah foto dikirim ke layanan pihak ketiga?</summary>
+          <p>Tidak. API ini self-hosted: gambar hanya diproses di server Anda sendiri. Halaman demo ini pun
+            mengirim gambar langsung ke URL endpoint yang Anda isi.</p>
+        </details>
+        <details>
+          <summary>Bagaimana cara menjalankannya?</summary>
+          <p>Clone repo, lalu jalankan <code>docker compose up -d --build</code>. API tersedia di
+            <code>http://localhost:5000</code>. Panduan lengkap ada di
+            <a href="https://github.com/orlinkzz/face-comparison-api#readme">README</a>.</p>
+        </details>
+        <details>
+          <summary>Apakah bisa dipakai untuk komersial?</summary>
+          <p>Bisa. Proyek ini berlisensi MIT. Pastikan pemilik foto memberikan persetujuan dan Anda mematuhi
+            regulasi perlindungan data pribadi yang berlaku (misalnya UU PDP).</p>
+        </details>
+      </div>
+
+      <div class="card cta" style="margin-top: 40px;">
+        <h2>Suka proyek ini?</h2>
+        <p>Beri bintang di GitHub, laporkan bug, atau kirim pull request.</p>
+        <a class="btn" href="https://github.com/orlinkzz/face-comparison-api" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/></svg>
+          Star di GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© 2026 Face Comparison API · MIT License</span>
+    <nav aria-label="Tautan footer">
+      <a href="https://github.com/orlinkzz/face-comparison-api">GitHub</a>
+      <a href="https://github.com/orlinkzz/face-comparison-api/blob/main/CONTRIBUTING.md">Kontribusi</a>
+      <a href="https://github.com/orlinkzz/face-comparison-api/blob/main/LICENSE">Lisensi</a>
+      <a href="https://github.com/ageitgey/face_recognition">Gambar contoh: ageitgey/face_recognition</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const files = { 1: null, 2: null };
+  const STORAGE_KEY = "face-api-url";
+
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) $("apiUrl").value = saved;
+  } catch (_) {}
+
+  $("apiUrl").addEventListener("change", () => {
+    try { localStorage.setItem(STORAGE_KEY, $("apiUrl").value.trim()); } catch (_) {}
+  });
+
+  function setFile(slot, file) {
+    files[slot] = file;
+    $("name" + slot).textContent = `${file.name} · ${Math.round(file.size / 1024)} KB`;
+    const thumb = $("thumb" + slot);
+    thumb.innerHTML = "";
+    const img = document.createElement("img");
+    img.alt = slot === 1 ? "Pratinjau foto profil" : "Pratinjau selfie";
+    img.src = URL.createObjectURL(file);
+    thumb.appendChild(img);
+  }
+
+  [1, 2].forEach((slot) => {
+    $("file" + slot).addEventListener("change", (e) => {
+      if (e.target.files[0]) setFile(slot, e.target.files[0]);
+    });
+    const drop = $("drop" + slot);
+    ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => {
+      e.preventDefault();
+      drop.classList.add("dragover");
+    }));
+    ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove("dragover")));
+    drop.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("image/")) setFile(slot, file);
+    });
+  });
+
+  async function loadSamples() {
+    try {
+      const pairs = [[1, "samples/profile.jpg"], [2, "samples/selfie.jpg"]];
+      for (const [slot, path] of pairs) {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error(path);
+        const blob = await res.blob();
+        setFile(slot, new File([blob], path.split("/").pop(), { type: "image/jpeg" }));
+      }
+    } catch (_) {
+      // fetch() tidak bisa membaca file lokal saat halaman dibuka via file://
+      $("sampleHint").textContent =
+        "Gambar contoh tidak bisa dimuat otomatis. Pilih manual dari folder samples/, " +
+        "atau buka halaman ini lewat server (mis. python -m http.server).";
+    }
+  }
+
+  $("sampleBtn").addEventListener("click", loadSamples);
+
+  const VERDICTS = {
+    success: { icon: "✓", title: "Wajah cocok", sub: "Distance di bawah 0.45." },
+    pending: { icon: "?", title: "Perlu verifikasi", sub: "Distance antara 0.45 dan 0.6." },
+    error: { icon: "✕", title: "Tidak cocok", sub: "" },
+  };
+
+  function showResult({ status, message, distance, elapsed, raw }) {
+    $("resultEmpty").hidden = true;
+    $("resultBody").hidden = false;
+    const kind = ["success", "pending"].includes(status) ? status : "error";
+    const v = VERDICTS[kind];
+    $("verdict").className = "verdict " + kind;
+    $("verdictIcon").textContent = v.icon;
+    $("verdictTitle").textContent = kind === "error" ? (message || v.title) : v.title;
+    $("verdictSub").textContent = kind === "error" ? `status: ${status}` : (message || v.sub);
+
+    const hasDistance = typeof distance === "number";
+    $("meterWrap").hidden = !hasDistance;
+    $("distance").textContent = hasDistance ? distance.toFixed(4) : "—";
+    $("elapsed").textContent = elapsed != null ? `${elapsed} ms` : "—";
+    if (hasDistance) $("pin").style.left = Math.min(Math.max(distance, 0), 1) * 100 + "%";
+    $("raw").textContent = raw || "";
+  }
+
+  $("compareBtn").addEventListener("click", async () => {
+    if (!files[1] || !files[2]) {
+      showResult({ status: "error", message: "Pilih kedua gambar terlebih dahulu." });
+      return;
+    }
+    const url = $("apiUrl").value.trim();
+    const form = new FormData();
+    form.append("image1", files[1]);
+    form.append("image2", files[2]);
+
+    const btn = $("compareBtn");
+    btn.disabled = true;
+    btn.textContent = "Memproses…";
+    const t0 = performance.now();
+    try {
+      const res = await fetch(url, { method: "POST", body: form });
+      const elapsed = Math.round(performance.now() - t0);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch (_) { data = { status: "error", message: `HTTP ${res.status}` }; }
+      showResult({ ...data, elapsed, raw: `HTTP ${res.status}\n` + text });
+    } catch (err) {
+      showResult({
+        status: "error",
+        message: "Tidak bisa menghubungi API",
+        raw: `${err}\n\nPastikan API berjalan di ${url} dan URL-nya benar.`,
+      });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Bandingkan wajah";
+    }
+  });
+
+  // Tab contoh kode + tombol salin
+  let activeTab = "docker";
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activeTab = tab.dataset.tab;
+      document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+      ["docker", "curl", "js"].forEach((k) => { $("code-" + k).hidden = k !== activeTab; });
+    });
+  });
+  $("copyBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("code-" + activeTab).textContent);
+      $("copyBtn").textContent = "Tersalin!";
+    } catch (_) {
+      $("copyBtn").textContent = "Gagal menyalin";
+    }
+    setTimeout(() => { $("copyBtn").textContent = "Salin"; }, 1500);
+  });
+
+  loadSamples();
+</script>
+</body>
+</html>

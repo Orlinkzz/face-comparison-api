@@ -10,8 +10,9 @@ import { Counter, Trend } from 'k6/metrics';
 const BASE_URL = (__ENV.BASE_URL || 'http://10.xxx.xx.xx')
   .replace(/\/+$/, '');
 
-const PROFILE_PHOTO = __ENV.PROFILE_PHOTO || './profile.jpg';
-const SELFIE_PHOTO = __ENV.SELFIE_PHOTO || './selfie.jpg';
+// Path relatif terhadap lokasi file script ini.
+const PROFILE_PHOTO = __ENV.PROFILE_PHOTO || '../samples/profile.jpg';
+const SELFIE_PHOTO = __ENV.SELFIE_PHOTO || '../samples/selfie.jpg';
 
 const REQUEST_TIMEOUT = __ENV.REQUEST_TIMEOUT || '60s';
 const VERBOSE = __ENV.VERBOSE === '1';
