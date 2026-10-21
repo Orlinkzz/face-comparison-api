@@ -1,10 +1,39 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from collections import OrderedDict
+from threading import Lock
+from io import BytesIO
+import time
 import face_recognition
 import numpy as np
+import hashlib
 import logging
+import os
 
 app = Flask(__name__)
+
+@app.before_request
+def start_request_timing():
+    g.face_timings = {}
+    g.face_request_start = time.perf_counter()
+
+
+@app.after_request
+def add_server_timing(response):
+    timings = getattr(g, "face_timings", {})
+
+    total_ms = (
+        time.perf_counter() - g.face_request_start
+    ) * 1000
+
+    timings["total"] = total_ms
+
+    response.headers["Server-Timing"] = ", ".join(
+        f"{name};dur={duration:.2f}"
+        for name, duration in timings.items()
+    )
+
+    return response
 
 # Set up logger for Flask app manually
 app.logger.setLevel(logging.INFO)
@@ -16,63 +45,153 @@ app.logger_name = "flask_app"  # Menetapkan logger_name agar flask_cors tidak er
 # Initialize CORS after setting up logger
 CORS(app, resources={r"/compare_faces": {"origins": "*"}})
 
-# Fungsi untuk memproses gambar dan membandingkan wajah
-def compare_faces(image1, image2):
-    # Ekstrak vektor wajah dari kedua gambar
-    face_encoding1 = face_recognition.face_encodings(image1)
-    face_encoding2 = face_recognition.face_encodings(image2)
+# Cache encoding foto profil dalam memori.
+# Maksimum 1000 encoding, bukan menyimpan seluruh foto.
+PROFILE_CACHE_MAX = 1000
+profile_cache = OrderedDict()
+cache_lock = Lock()
 
-    if len(face_encoding1) == 0 or len(face_encoding2) == 0:
-        return False  # Tidak ada wajah yang terdeteksi di salah satu gambar
+def get_profile_encoding(image_bytes):
+    key = hashlib.sha256(image_bytes).hexdigest()
 
-    # Bandingkan wajah berdasarkan vektor fitur
-    match = face_recognition.compare_faces([face_encoding1[0]], face_encoding2[0])
-    return match[0]  # Mengembalikan True jika wajah cocok, False jika tidak
+    with cache_lock:
+        cached = profile_cache.get(key)
+        if cached is not None:
+            profile_cache.move_to_end(key)
+            return cached
 
-# Endpoint untuk menerima dan membandingkan dua gambar wajah
-@app.route('/compare_faces', methods=['POST'])
+    # Proses mahal dilakukan di luar lock agar request lain
+    # tetap bisa memproses encoding.
+    image = face_recognition.load_image_file(BytesIO(image_bytes))
+    encodings = face_recognition.face_encodings(image)
+
+    if not encodings:
+        return None
+
+    encoding = encodings[0]
+
+    with cache_lock:
+        # Periksa kembali untuk menangani cache miss bersamaan.
+        cached = profile_cache.get(key)
+        if cached is not None:
+            profile_cache.move_to_end(key)
+            return cached
+
+        profile_cache[key] = encoding
+        profile_cache.move_to_end(key)
+
+        while len(profile_cache) > PROFILE_CACHE_MAX:
+            profile_cache.popitem(last=False)
+
+    return encoding
+
+
+def get_selfie_encoding(image_bytes):
+    image = face_recognition.load_image_file(BytesIO(image_bytes))
+    encodings = face_recognition.face_encodings(image)
+
+    return encodings[0] if encodings else None
+
+
+@app.route("/compare_faces", methods=["POST"])
 def compare_faces_api():
     try:
-        # Memeriksa apakah file di-upload
-        if 'image1' not in request.files or 'image2' not in request.files:
+        if "image1" not in request.files or "image2" not in request.files:
             app.logger.error("One or both files are missing.")
-            return jsonify({"status": "error", "message": "File tidak ditemukan!"})
+            return jsonify({
+                "status": "error",
+                "message": "File tidak ditemukan!"
+            }), 400
 
-        file1 = request.files['image1']
-        file2 = request.files['image2']
+        file1 = request.files["image1"]
+        file2 = request.files["image2"]
 
-        # Cek apakah file memiliki nama (bukan kosong)
-        if file1.filename == '' or file2.filename == '':
+        if not file1.filename or not file2.filename:
             app.logger.error("One or both files are empty.")
-            return jsonify({"status": "error", "message": "Gambar tidak valid!"})
+            return jsonify({
+                "status": "error",
+                "message": "Gambar tidak valid!"
+            }), 400
 
-        app.logger.info(f"Received file1: {file1.filename}, file2: {file2.filename}")
+        image1_bytes = file1.read()
+        image2_bytes = file2.read()
 
-        # Membaca gambar menggunakan face_recognition
-        image1 = face_recognition.load_image_file(file1)
-        image2 = face_recognition.load_image_file(file2)
+        if not image1_bytes or not image2_bytes:
+            return jsonify({
+                "status": "error",
+                "message": "File gambar kosong!"
+            }), 400
 
-        app.logger.info(f"Loaded image1 with shape: {image1.shape}, image2 with shape: {image2.shape}")
+        # Encoding profil digunakan kembali jika sudah di-cache.
+        start = time.perf_counter()
+        encoding1 = get_profile_encoding(image1_bytes)
+        g.face_timings["profile_encoding"] = (
+            time.perf_counter() - start
+        ) * 1000
 
-        # Melakukan perbandingan wajah
-        result = compare_faces(image1, image2)
+        start = time.perf_counter()
+        encoding2 = get_selfie_encoding(image2_bytes)
+        g.face_timings["selfie_encoding"] = (
+            time.perf_counter() - start
+        ) * 1000
 
-        if result:
-            app.logger.info("Faces match.")
-            return jsonify({"status": "success", "message": "Wajah cocok!"})
-        else:
+        if encoding1 is None or encoding2 is None:
+            app.logger.info("One or both faces not found.")
+            return jsonify({
+                "status": "error",
+                "message": "Wajah tidak ditemukan!",
+                "distance": None
+            }), 200
+
+        start = time.perf_counter()
+        distance = float(
+            face_recognition.face_distance(
+                [encoding1], encoding2
+            )[0]
+        )
+
+        g.face_timings["face_compare"] = (
+            time.perf_counter() - start
+        ) * 1000
+
+        if distance >= 0.6:
             app.logger.info("Faces do not match.")
-            return jsonify({"status": "error", "message": "Wajah tidak cocok!"})
+            return jsonify({
+                "status": "error",
+                "message": "Wajah tidak cocok!",
+                "distance": distance
+            }), 200
 
-    except Exception as e:
-        app.logger.error(f"Error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)})
+        if distance < 0.45:
+            app.logger.info("Faces match.")
+            return jsonify({
+                "status": "success",
+                "message": "Wajah cocok!",
+                "distance": distance
+            }), 200
 
-# Endpoint untuk menguji server
-@app.route('/test', methods=['GET'])
+        app.logger.info("Faces match but needs verification")
+        return jsonify({
+            "status": "pending",
+            "message": "Wajah cocok, tapi perlu verifikasi.",
+            "distance": distance
+        }), 200
+
+    except Exception:
+        app.logger.exception("Face recognition failed")
+        return jsonify({
+            "status": "error",
+            "message": "Gagal memproses gambar."
+        }), 500
+
+
+@app.route("/test", methods=["GET"])
 def test():
-    return jsonify({"status": "success", "message": "Server is running!"})
+    return jsonify({
+        "status": "success",
+        "message": "Server is running!"
+    })
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
 
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=False)

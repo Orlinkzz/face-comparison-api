@@ -6,6 +6,8 @@ services:
     networks:
       - web
     container_name: face_recognition_app
+    restart: unless-stopped
+
 networks:
   web:
     external: true

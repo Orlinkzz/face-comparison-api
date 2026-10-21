@@ -1,6 +1,6 @@
 Flask==2.0.1
-flask_cors==2.0.1
+flask_cors==3.0.10
 Werkzeug==2.0.1
 face_recognition==1.3.0
-numpy==1.21.2
+numpy==1.26.4
 gunicorn==20.1.0
