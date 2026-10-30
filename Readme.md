@@ -18,6 +18,7 @@ REST API sederhana berbasis **Flask** untuk membandingkan dua foto wajah (**veri
 - CORS aktif untuk `/compare_faces`, sehingga bisa dipanggil dari front-end lintas domain.
 - Siap produksi dengan Docker + Gunicorn.
 - Halaman tester (`index.html`) dan skrip load test k6.
+- Berjalan di Docker dengan **gunicorn** (2 worker).
 
 ## Struktur repo
 
@@ -62,10 +63,12 @@ Butuh Python 3.11 dan compiler C++ beserta CMake untuk membangun `dlib`:
 - **Windows:** install *Visual Studio Build Tools* (workload "Desktop development with C++") dan CMake
 
 ```bash
+cd face-recognition
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate      # Linux/macOS
+venv\Scripts\activate         # Windows
 pip install -r requirements.txt
-python app.py
+python app.py                 # http://localhost:5000
 ```
 
 `python app.py` memakai server development bawaan Flask. Untuk produksi, gunakan Gunicorn seperti di `Dockerfile`.
@@ -133,6 +136,28 @@ curl -X POST http://localhost:5000/compare_faces \
   -F "image2=@samples/selfie.jpg"
 ```
 
+## Konfigurasi (environment)
+
+| Variabel | Default | Keterangan |
+|---|---|---|
+| `FACE_API_KEY` | _(kosong)_ | Jika diisi, `POST /compare_faces` wajib membawa header `X-Api-Key` yang sama; tanpa itu dijawab `401 Unauthorized`. Harus sama dengan `FACE_RECOGNITION_KEY` di `.env` HR. `GET /test` tetap terbuka. |
+| `FACE_MAX_IMAGE_SIDE` | `800` | Sisi terpanjang gambar (px) sebelum deteksi wajah. Gambar juga diputar sesuai EXIF. |
+| `FACE_MAX_UPLOAD_MB` | `10` | Batas total upload; di atasnya response `413` `Ukuran gambar terlalu besar!`. |
+| `FACE_SLOW_REQUEST_MS` | `5000` | Request lebih lama dari ini dicatat di log (`Slow request ...`) beserta rincian timing. |
+
+`FACE_API_KEY` diisi di `face-recognition/.env` (tidak di-commit dan tidak ikut ke image, lihat `.dockerignore`), lalu diteruskan oleh `docker-compose.yml`:
+
+```bash
+cp .env.example .env
+sed -i "s/^FACE_API_KEY=.*/FACE_API_KEY=$(openssl rand -hex 32)/" .env
+chmod 600 .env
+docker compose up -d --build
+```
+
+Gunicorn dijalankan dengan `--preload` supaya model dlib dimuat sekali sebelum worker dibuat.
+
+---
+
 ### Halaman tester (`index.html`)
 
 `index.html` adalah halaman statis untuk mengunggah dua gambar dan melihat hasilnya: status, distance, dan waktu respons. Gambar dari `samples/` dimuat otomatis.
@@ -175,6 +200,14 @@ Skrip ini mengirim request ke `${BASE_URL}/face-recognition/compare_faces`, yait
 ## Gambar contoh
 
 `samples/profile.jpg` dan `samples/selfie.jpg` diambil dari folder [`examples/`](https://github.com/ageitgey/face_recognition/tree/master/examples) proyek `face_recognition` (MIT License). Keduanya adalah foto berbeda dari orang yang sama, sehingga hasil yang diharapkan adalah **cocok**. Gambar ini hanya untuk pengujian.
+
+## Catatan
+
+- Pastikan hanya **satu wajah** yang terlihat jelas di setiap gambar. Jika ada lebih dari satu, yang dipakai adalah wajah pertama yang terdeteksi.
+- Cache ada di memori **per worker gunicorn** dan hilang saat container restart.
+- Ambang batas (`0.45` dan `0.6`) diatur langsung di `app.py`.
+- CORS mengizinkan semua origin (`*`) untuk `/compare_faces`. Batasi di reverse proxy jika perlu.
+
 
 ## Kontribusi
 

@@ -27,12 +27,10 @@ COPY . /app/
 EXPOSE 5000
 
 # Tentukan perintah untuk menjalankan aplikasi Flask
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:5000", \
-     "--workers", "4", \
+# --preload: model dlib dimuat sekali di master lalu dibagi ke worker (hemat RAM)
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", \
+     "--workers", "2", \
      "--threads", "1", \
      "--timeout", "120", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--capture-output", \
+     "--preload", \
      "app:app"]

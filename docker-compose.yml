@@ -1,8 +1,13 @@
 services:
   face-recognition-app:
     build: .
-    ports:
-      - "5000:5000"
+    # Tidak dipublish ke host: hanya diakses nginx lewat network `web`
+    # (http://face_recognition_app:5000)
+    expose:
+      - "5000"
+    environment:
+      # Diisi di face-recognition/.env (tidak di-commit); harus sama dengan FACE_RECOGNITION_KEY di HR
+      - FACE_API_KEY=${FACE_API_KEY:-}
     networks:
       - web
     container_name: face_recognition_app
